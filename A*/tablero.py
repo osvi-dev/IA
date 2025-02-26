@@ -1,7 +1,7 @@
 import pygame
 import algoritmo
 # Configuraciones iniciales
-ANCHO_VENTANA = 800
+ANCHO_VENTANA = 650
 VENTANA = pygame.display.set_mode((ANCHO_VENTANA, ANCHO_VENTANA))
 pygame.display.set_caption("Visualización de Nodos")
 
@@ -104,18 +104,11 @@ def obtener_click_pos(pos, filas, ancho):
     col = x // ancho_nodo
     return fila, col
     
-def ver_nodos():
-    """
-    Imprime todos los nodos que se han definido en la cuadrícula actual.
-    """
-    for cor, aux_nodo in nodos.items():
-        print(aux_nodo)
-    print("\n")
 
 # TODO: tengo de definir un metodo para avanzar y calcular 
 # g, f, y h para cada salto ademas del apuntador de donde brinque
 def main(ventana, ancho):
-    FILAS = 5
+    FILAS = 10
     grid = crear_grid(FILAS, ancho)
 
     inicio = None
@@ -165,10 +158,10 @@ def main(ventana, ancho):
                     nodos.pop((fila, col))
             # Una vez definido el inicio, el fin y los muros podemos apretar
             # la letra b para buscar el camino mas corto
-            elif pygame.key.get_pressed()[pygame.K_b]:
-                algorit = algoritmo.Algoritmo(nodos, grid)
-                algorit.imprimir()
-                
+            elif event.type == pygame.KEYDOWN and event.key == pygame.K_b:
+                update_ui = lambda: dibujar(VENTANA, grid, FILAS, ANCHO_VENTANA)
+                algorit = algoritmo.Algoritmo(nodos, grid, update_ui)
+                algorit.resolver()    
 
     pygame.quit()
 
