@@ -47,17 +47,20 @@ class Algoritmo:
         came_from = {}
         g_score = {start: 0}
         f_score = {start: self.heuristic(start, end)}
+        
+        # Imprimir heurística del nodo inicial
+        print(f"Nodo inicial {start}: h = {self.heuristic(start, end)}")
 
         while open_heap:
             current_f, current = heapq.heappop(open_heap)
 
             if current != start and current != end:
                 fila, col = current
-                self.board[fila][col].color = (0, 0, 255)  # Azul
+                self.board[fila][col].color = (0, 0, 255)  
                 self.update_callback()  # Actualizar interfaz
                 time.sleep(0.1)
             if current == end:
-                self.reconstruir_camino(came_from, end)
+                self.reconstruir_camino(came_from, end, g_score)  # Pasamos g_score
                 return
 
             if current in self.lista_cerrada:
@@ -65,6 +68,16 @@ class Algoritmo:
 
             self.lista_cerrada.add(current)
 
+            # Verificar primero si el nodo final está entre los vecinos
+            for neighbor_fila, neighbor_col, cost in self.get_vecinos(current):
+                neighbor = (neighbor_fila, neighbor_col)
+                if neighbor == end:
+                    came_from[neighbor] = current
+                    g_score[neighbor] = g_score.get(current, 0) + cost  # Asegurar que g_score tenga el valor
+                    self.reconstruir_camino(came_from, end, g_score)  # Pasamos g_score
+                    return
+            
+            # Continuar con el proceso normal de A*
             for neighbor_fila, neighbor_col, cost in self.get_vecinos(current):
                 neighbor = (neighbor_fila, neighbor_col)
                 if neighbor in self.lista_cerrada:
@@ -75,7 +88,10 @@ class Algoritmo:
                 if tentative_g < g_score.get(neighbor, float('inf')):
                     came_from[neighbor] = current
                     g_score[neighbor] = tentative_g
-                    f = tentative_g + self.heuristic(neighbor, end)
+                    h = self.heuristic(neighbor, end)
+                    f = tentative_g + h
+                    # Imprimir la heurística para cada nodo evaluado
+                    print(f"Nodo {neighbor}: g = {tentative_g}, h = {h}, f = {f}")
                     heapq.heappush(open_heap, (f, neighbor))
                     f_score[neighbor] = f
 
@@ -117,37 +133,67 @@ class Algoritmo:
             new_fila = fila + df
             new_col = col + dc
             if 0 <= new_fila < len(self.board) and 0 <= new_col < len(self.board[0]):
-                vecinos.append((new_fila, new_col, cost))
+                new_coor = (new_fila, new_col)  # Corregido: usar tuple() en lugar de tuple
+                if new_coor not in self.lista_cerrada:  # Solo agregar si no está en la lista cerrada
+                    vecinos.append((new_fila, new_col, cost))
         return vecinos
 
-    def reconstruir_camino(self, came_from:dict, current:dict):
+    def reconstruir_camino(self, came_from:dict, current:tuple, g_score:dict):
         """
         Reconstruye el camino del nodo final al nodo inicial en el
         diccionario came_from y marca los nodos del camino en verde.
+        También imprime la heurística de cada nodo en el camino.
         
         :param came_from: El diccionario con los nodos que llevan a cada nodo.
         :type came_from: dict
         :param current: El nodo final
         :type current: tuple
+        :param g_score: Diccionario con los valores g para cada nodo
+        :type g_score: dict
         """
         path = []
+        total_cost = 0
+        prev = None
+        
+        # Recopilar el camino y calcular el costo
         while current in came_from:
             path.append(current)
+            if prev is not None:
+                # Calcular la distancia entre nodos adyacentes
+                if abs(current[0] - prev[0]) + abs(current[1] - prev[1]) == 1:
+                    # Movimiento horizontal o vertical (costo 10)
+                    total_cost += 10
+                else:
+                    # Movimiento diagonal (costo 14)
+                    total_cost += 14
+            prev = current
             current = came_from[current]
         path.append(self.coor_inicio)  # Añadir el nodo inicial
-        print(path)
+        
+        # print("Camino encontrado (desde el final hasta el inicio):", path)
         path.reverse()
-        print(path)
+        # print("Camino encontrado (desde el inicio hasta el final):", path)
+        print(f"Costo total del camino: {total_cost}")
+        
+        # Imprimir la heurística para cada nodo del camino
+        print("\nHeurística para cada nodo del camino:")
+        for i, nodo in enumerate(path):
+            h = self.heuristic(nodo, self.coor_fin)
+            g = g_score.get(nodo, 0)
+            f = g + h
+            print(f"Paso {i+1}: Nodo {nodo}: g = {g}, h = {h}, f = {f}")
 
+        # Limpiar el tablero
         for fila in self.board:
             for nodo in fila:
                 if not nodo.es_inicio() and not nodo.es_fin() and not nodo.es_pared():
                     nodo.color = (255, 255, 255)  # Blanco
-                    
+        
+        # Marcar el camino
         for coor in path:
             fila, col = coor
             nodo = self.board[fila][col]
             if not nodo.es_inicio() and not nodo.es_fin():
-                nodo.color = (0, 255, 0)
+                nodo.color = (0, 255, 0)  # Verde
 
-        self.update_callback
+        self.update_callback()  # Actualizamos la interfaz al final
