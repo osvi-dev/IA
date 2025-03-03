@@ -68,18 +68,16 @@ class Algoritmo:
 
             self.lista_cerrada.add(current)
 
-            # Verificar primero si el nodo final está entre los vecinos
+            # Continuar con el proceso normal de A*
             for neighbor_fila, neighbor_col, cost in self.get_vecinos(current):
                 neighbor = (neighbor_fila, neighbor_col)
+                # detectamos si es el final:
                 if neighbor == end:
                     came_from[neighbor] = current
                     g_score[neighbor] = g_score.get(current, 0) + cost  # Asegurar que g_score tenga el valor
                     self.reconstruir_camino(came_from, end, g_score)  # Pasamos g_score
                     return
-            
-            # Continuar con el proceso normal de A*
-            for neighbor_fila, neighbor_col, cost in self.get_vecinos(current):
-                neighbor = (neighbor_fila, neighbor_col)
+                
                 if neighbor in self.lista_cerrada:
                     continue
 
