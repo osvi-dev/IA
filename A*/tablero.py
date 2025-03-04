@@ -108,7 +108,7 @@ def obtener_click_pos(pos, filas, ancho):
 # TODO: tengo de definir un metodo para avanzar y calcular 
 # g, f, y h para cada salto ademas del apuntador de donde brinque
 def main(ventana, ancho):
-    FILAS = 10
+    FILAS = 11
     grid = crear_grid(FILAS, ancho)
 
     inicio = None

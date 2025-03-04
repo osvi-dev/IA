@@ -42,8 +42,12 @@ class Algoritmo:
         start = self.coor_inicio
         end = self.coor_fin
 
+        # Usamos un contador para asegurar un orden determinístico en caso de empate
+        counter = 0
         open_heap = []
-        heapq.heappush(open_heap, (0, start))
+        # Ahora usamos tupla de (f_score, tiebreaker, counter, position)
+        # El tiebreaker favorecerá caminos hacia una dirección específica
+        heapq.heappush(open_heap, (0, self.tiebreaker(start, end), counter, start))
         came_from = {}
         g_score = {start: 0}
         f_score = {start: self.heuristic(start, end)}
@@ -52,7 +56,7 @@ class Algoritmo:
         print(f"Nodo inicial {start}: h = {self.heuristic(start, end)}")
 
         while open_heap:
-            current_f, current = heapq.heappop(open_heap)
+            current_f, _, _, current = heapq.heappop(open_heap)
 
             if current != start and current != end:
                 fila, col = current
@@ -60,7 +64,7 @@ class Algoritmo:
                 self.update_callback()  # Actualizar interfaz
                 time.sleep(0.1)
             if current == end:
-                self.reconstruir_camino(came_from, end, g_score)  # Pasamos g_score
+                self.reconstruir_camino(came_from, end, g_score)
                 return
 
             if current in self.lista_cerrada:
@@ -74,8 +78,8 @@ class Algoritmo:
                 # detectamos si es el final:
                 if neighbor == end:
                     came_from[neighbor] = current
-                    g_score[neighbor] = g_score.get(current, 0) + cost  # Asegurar que g_score tenga el valor
-                    self.reconstruir_camino(came_from, end, g_score)  # Pasamos g_score
+                    g_score[neighbor] = g_score.get(current, 0) + cost
+                    self.reconstruir_camino(came_from, end, g_score)
                     return
                 
                 if neighbor in self.lista_cerrada:
@@ -88,15 +92,22 @@ class Algoritmo:
                     g_score[neighbor] = tentative_g
                     h = self.heuristic(neighbor, end)
                     f = tentative_g + h
+                    
                     # Imprimir la heurística para cada nodo evaluado
                     print(f"Nodo {neighbor}: g = {tentative_g}, h = {h}, f = {f}")
-                    heapq.heappush(open_heap, (f, neighbor))
+                    
+                    # Incrementamos el contador para asegurar un orden FIFO para nodos con el mismo f
+                    counter += 1
+                    
+                    # Usamos el criterio de desempate para favorecer una dirección
+                    tie = self.tiebreaker(neighbor, end)
+                    
+                    heapq.heappush(open_heap, (f, tie, counter, neighbor))
                     f_score[neighbor] = f
 
         print("No se encontró un camino")
 
     def heuristic(self, a:tuple, b:tuple):
-        # Distancia Euclideana
         """
         Calcula la distancia entre dos nodos utilizando la distancia
         Euclideana.
@@ -108,8 +119,28 @@ class Algoritmo:
         :return: La distancia entre los dos nodos.
         :rtype: float
         """
-        
         return np.linalg.norm(np.array(a) - np.array(b))
+
+    def tiebreaker(self, a:tuple, b:tuple):
+        """
+        Función para desempatar nodos con la misma f.
+        Favorece nodos que están más a la izquierda y arriba.
+        
+        :param a: Las coordenadas del nodo actual.
+        :type a: tuple
+        :param b: Las coordenadas del nodo final.
+        :type b: tuple
+        :return: Un valor para desempatar.
+        :rtype: float
+        """
+        # Favorece caminos que van más a la izquierda (menor valor de x)
+        # y más hacia arriba (menor valor de y)
+        dx1 = a[0] - b[0]
+        dy1 = a[1] - b[1]
+        
+        # Esta fórmula favorecerá nodos más a la izquierda y arriba
+        # cuando los valores f son iguales
+        return dx1 + dy1
 
     def get_vecinos(self, coor:tuple) -> list:
         """
@@ -123,16 +154,20 @@ class Algoritmo:
         fila, col = coor
         vecinos = []
         directions = [
-            (-1, 0, 10), (1, 0, 10), (0, -1, 10), (0, 1, 10), # Arriba, abajo, izquierda, derecha
-            (-1, -1, 14), (-1, 1, 14), (1, -1, 14), (1, 1, 14) # diagonales
-            ]  
+            (-1, 0, 10), (1, 0, 10), (0, -1, 10), (0, 1, 10),  # Arriba, abajo, izquierda, derecha
+            (-1, -1, 14), (-1, 1, 14), (1, -1, 14), (1, 1, 14)  # diagonales
+        ]  
+        
+        # Para favorecer una dirección, podemos ordenar las direcciones
+        # Aquí favorecemos izquierda-arriba primero
+        directions.sort(key=lambda d: abs(d[0]) + abs(d[1]))
         
         for df, dc, cost in directions:
             new_fila = fila + df
             new_col = col + dc
             if 0 <= new_fila < len(self.board) and 0 <= new_col < len(self.board[0]):
-                new_coor = (new_fila, new_col)  # Corregido: usar tuple() en lugar de tuple
-                if new_coor not in self.lista_cerrada:  # Solo agregar si no está en la lista cerrada
+                new_coor = (new_fila, new_col)
+                if new_coor not in self.lista_cerrada:
                     vecinos.append((new_fila, new_col, cost))
         return vecinos
 
@@ -168,9 +203,7 @@ class Algoritmo:
             current = came_from[current]
         path.append(self.coor_inicio)  # Añadir el nodo inicial
         
-        # print("Camino encontrado (desde el final hasta el inicio):", path)
         path.reverse()
-        # print("Camino encontrado (desde el inicio hasta el final):", path)
         print(f"Costo total del camino: {total_cost}")
         
         # Imprimir la heurística para cada nodo del camino
