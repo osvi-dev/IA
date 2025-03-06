@@ -1,56 +1,68 @@
 import os
 import nltk
-from nltk.tokenize import sent_tokenize, word_tokenize
+from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords
 from nltk.cluster.util import cosine_distance
 import speech_recognition as sr
 from gtts import gTTS
+from numpy import isnan
 
-# Función para cargar preguntas desde un archivo
+# Cargar preguntas desde un archivo
 def CargaPreguntas(archivo):
     with open(archivo, "r", encoding="utf-8") as f:
-        texto = f.read()
-    pregs = sent_tokenize(texto)
-    return texto, pregs
+        pregs = f.read().splitlines()  # Corrección: usar splitlines() en vez de sent_tokenize()
+    return pregs
 
-# Función para eliminar stopwords y caracteres no alfabéticos
+# Cargar respuestas desde un archivo
+def cargaRespuesta(archivo, indice):
+    with open(archivo, "r", encoding="utf-8") as f:
+        res = f.read().splitlines()  # Corrección: usar splitlines()
+    return res[indice] if indice < len(res) else "No tengo una respuesta para eso."
+
+# Eliminar stopwords y caracteres no alfabéticos
 def getCleanQs(listaOracion):
     stopws = stopwords.words("spanish")
     textoconsw = [w.lower() for w in listaOracion if w.isalpha()]
     textosinsw = [w for w in textoconsw if w not in stopws]
     return textosinsw
 
-# Función para crear vectores de palabras
+# Crear vectores de palabras
 def crearVector(oracion, diccionario):
+    if not oracion:  # Manejar caso de oración vacía
+        return [0] * len(diccionario)
     distrib = nltk.FreqDist(oracion)
     vector = [distrib[w] for w in diccionario]
     return vector
 
-# Función para cargar respuestas desde un archivo
-def cargaRespuesta(archivo, indice):
-    with open(archivo, "r", encoding="utf-8") as f:
-        texto = f.read()
-    res = sent_tokenize(texto)
-    return res[indice] if indice < len(res) else "No tengo una respuesta para eso."
-
-# Función principal del chatbot
+# Chatbot mejorado
 def chatbot(pu):
-    (ptxt, psucias) = CargaPreguntas("preg.txt")
+    psucias = CargaPreguntas("preg.txt")
     qsWords = [word_tokenize(orac) for orac in psucias]
     tssw = [getCleanQs(orac) for orac in qsWords]
-    texto_tot = getCleanQs(word_tokenize(ptxt) + word_tokenize(pu))
-    dicc = set(texto_tot)
+
+    # Crear diccionario solo con palabras limpias de las preguntas
+    dicc = set(word for oracion in tssw for word in oracion)
+
     vs = [crearVector(ora, dicc) for ora in tssw]
     vpu = crearVector(getCleanQs(word_tokenize(pu)), dicc)
-    sims = [((cosine_distance(vpu, v) - 1) * (-1)) for v in vs]
+
+    if sum(vpu) == 0:  # Si el vector del usuario está vacío, evitar cálculo erróneo
+        return "Lo siento, no entendí la pregunta."
+
+    # Calcular la similitud de coseno
+    sims = [1 - cosine_distance(vpu, v) if not isnan(cosine_distance(vpu, v)) else 0 for v in vs]
+
+    if max(sims) < 0.3:  # Umbral mínimo de similitud
+        return "Lo siento, no entendí la pregunta."
+
     indice = sims.index(max(sims))
     return cargaRespuesta("res.txt", indice)
 
-# Función para reconocimiento de voz
+# Reconocimiento de voz
 def reconocer_voz():
     voz = sr.Recognizer()
     print('Escuchando... ')
-    with sr.Microphone() as fuente:
+    with sr.Microphone(device_index=5) as fuente:
         voz.adjust_for_ambient_noise(fuente)
         audio = voz.listen(fuente)
         try:
@@ -64,7 +76,7 @@ def reconocer_voz():
             print(f"Error al solicitar resultados del servicio de reconocimiento de voz; {e}")
             return None
 
-# Función para sintetizar y reproducir la respuesta
+# Sintetizar y reproducir respuesta
 def hablar(respuesta):
     tts = gTTS(respuesta, lang='es')
     tts.save("respuesta.mp3")
