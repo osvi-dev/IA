@@ -1,3 +1,4 @@
+from locale import currency
 import numpy as np
 import time 
 class Algoritmo:
@@ -12,7 +13,7 @@ class Algoritmo:
         self.lista_abierta = {}
         # para actualizar la interfaz grafica
         self.update_callback = update_callback
-
+        
     def definir_inicio_fin(self):
         """
         Define las coordenadas de inicio y fin, y agrega las paredes a la lista cerrada.
@@ -22,6 +23,7 @@ class Algoritmo:
         for coor, nodo in self.informacion.items():
             if nodo.es_inicio():
                 self.coor_inicio = coor
+                self.lista_cerrada.add(coor)
             elif nodo.es_fin():
                 self.coor_fin = coor
             elif nodo.es_pared():
@@ -41,14 +43,14 @@ class Algoritmo:
         """
         return np.linalg.norm(np.array(a) - np.array(b))
 
-    def encontrar_vecinos(self, curr_coor):
+    def encontrar_vecinos(self, curr_coor:tuple):
         curr_x, curr_y = curr_coor
 
         # g es el costo de llegar al vecino
         # h es la distancia entre, el vecino y el final
         # f es la suma de g y h
 
-        g, h, f = None
+        g, h, f = None, None, None
         
         # El costo de las direcciones sera 10 para mov uni
         direcciones = [
@@ -64,28 +66,36 @@ class Algoritmo:
         
         for dx, dy, costo in direcciones:
             next_x, next_y = curr_x + dx, curr_y + dy
+            vecino_coor = (next_x, next_y)
+
             # Comprobamos si las coordenadas son validas y ademas no esten en la lista cerrada
             # la coordenada en x es mayor a 0 y menor a la longitud del tablero
             # la coordenada en y es mayor a 0 y menor a la longitud del tablero
-            if (0 <= next_x < len(self.board) and 0 <= next_y < len(self.board[0])) and ((next_x, next_y) not in self.lista_cerrada):
+            if (0 <= next_x < len(self.board) and 0 <= next_y < len(self.board[0])) and (vecino_coor not in self.lista_cerrada):
                 
                 # Camibamos el color de la casilla, para saber que es un vecino
-                self.board[next_x][next_y] = (0, 0, 100)
+                self.board[next_x][next_y].color = (0, 0, 100)
                 time.sleep(0.1)
+
                 # Verificamos el vecino es el final
                 if (next_x, next_y) == self.coor_fin:
                     # construimos el final
                     return 
-            # guardamos la coordenada
-            next_coor = (next_x, next_y)
-            # verificamos que no este en la lista abierta, si esta veremos si volvemos a calcular f,g,h 
-            if next_coor not in self.lista_abierta:
-                g = costo
-                h = self.heuristic(next_coor, self.coor_fin)
-                f = g + h
-                self.lista_abierta[next_coor] = (g, h, f)
-            
-            self.update_callback
+    
+                # guardamos la coordenada
+                next_coor = (next_x, next_y)
+    
+                # verificamos que no este en la lista abierta, si esta veremos si volvemos a calcular f,g,h 
+                if next_coor not in self.lista_abierta:
+                    g = costo
+                    h = self.heuristic(next_coor, self.coor_fin)
+                    f = g + h
+                    self.lista_abierta[next_coor] = (g, h, f)
+
+                    # primimimos por consola
+                    print(f"Nodo: {next_coor}, G: {g}, H: {h}, F: {f}")
+
+                self.update_callback()
 
     def resolver(self):
         """
@@ -104,6 +114,12 @@ class Algoritmo:
         self.definir_inicio_fin()
         if self.coor_inicio is None or self.coor_fin is None:
             return  # No hay inicio o fin
+        
+        dimensiones = (len(self.board), len(self.board[0]))
+        print(f'Las dimensiones del tablero son: {dimensiones}')
+            
+        # Esta es mi lista cerrada
+        self.lista_cerrada.add(self.coor_inicio)
 
         self.encontrar_vecinos(self.coor_inicio)
         

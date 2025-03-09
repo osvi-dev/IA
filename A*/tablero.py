@@ -1,5 +1,5 @@
 import pygame
-import algoritmo
+import algoritmo_nuevo
 # Configuraciones iniciales
 ANCHO_VENTANA = 650
 VENTANA = pygame.display.set_mode((ANCHO_VENTANA, ANCHO_VENTANA))
@@ -160,7 +160,7 @@ def main(ventana, ancho):
             # la letra b para buscar el camino mas corto
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_b:
                 update_ui = lambda: dibujar(VENTANA, grid, FILAS, ANCHO_VENTANA)
-                algorit = algoritmo.Algoritmo(nodos, grid, update_ui)
+                algorit = algoritmo_nuevo.Algoritmo(nodos, grid, update_ui)
                 algorit.resolver()    
 
     pygame.quit()
