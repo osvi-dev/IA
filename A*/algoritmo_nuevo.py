@@ -1,9 +1,19 @@
-from locale import currency
 import numpy as np
 import time 
 class Algoritmo:
 
     def __init__(self, informacion: dict, board, update_callback):
+        """
+        Inicializa el objeto Algoritmo.
+
+        :param informacion: Diccionario con las coordenadas de cada nodo y su tipo (inicio, fin, pared)
+        :type informacion: dict
+        :param board: Tablero de juego
+        :type board: list
+        :param update_callback: Funcion para actualizar la interfaz grafica
+        :type update_callback: function
+        :return: None
+        """
         self.informacion = informacion
         self.board = board
         self.coor_inicio = None
@@ -13,6 +23,8 @@ class Algoritmo:
         self.lista_abierta = {}
         # para actualizar la interfaz grafica
         self.update_callback = update_callback
+        # sera el camino del final
+        self.camino = {}
         
     def definir_inicio_fin(self):
         """
@@ -43,7 +55,7 @@ class Algoritmo:
         """
         return np.linalg.norm(np.array(a) - np.array(b))
 
-    def encontrar_vecinos(self, curr_coor:tuple):
+    def encontrar_vecinos(self, curr_coor:tuple, datos:tuple):
         curr_x, curr_y = curr_coor
 
         # g es el costo de llegar al vecino
@@ -54,14 +66,14 @@ class Algoritmo:
         
         # El costo de las direcciones sera 10 para mov uni
         direcciones = [
-            (+1, 0, 10),    # Arriba
-            (-1, 0, 10),    # Abajo
-            (0, +1, 10),    # Derecha
-            (0, -1, 10),    # Izquierda
-            (+1, +1, 14),   # Diagonal arriba derecha
-            (+1, -1, 14),   # Diagonal abajo derecha
-            (-1, +1, 14),   # Diagonal arriba izquierda
-            (-1, -1, 14)    # Diagonal abajo izquierda
+            (+1, 0, 10),    # Derecha 
+            (-1, 0, 10),    # Izquierda 
+            (0, +1, 10),    # Arriba
+            (0, -1, 10),    # Abajo 
+            (+1, +1, 14),   # Diagonal derecha arriba
+            (+1, -1, 14),   # Diagonal derecha abajo 
+            (-1, +1, 14),   # Diagonal izquierda arriba
+            (-1, -1, 14)    # Diagonal izquierda abajo
         ]
         
         for dx, dy, costo in direcciones:
@@ -73,27 +85,38 @@ class Algoritmo:
             # la coordenada en y es mayor a 0 y menor a la longitud del tablero
             if (0 <= next_x < len(self.board) and 0 <= next_y < len(self.board[0])) and (vecino_coor not in self.lista_cerrada):
                 
-                # Camibamos el color de la casilla, para saber que es un vecino
-                self.board[next_x][next_y].color = (0, 0, 100)
-                time.sleep(0.1)
 
                 # Verificamos el vecino es el final
                 if (next_x, next_y) == self.coor_fin:
                     # construimos el final
+                    print("Encontramos el camino")
+                    time.sleep(10)
                     return 
     
+                # Cambiamos el color de la casilla, para saber que es un vecino
+                self.board[next_x][next_y].color = (9, 125, 100)
+                time.sleep(0.1)
+
                 # guardamos la coordenada
                 next_coor = (next_x, next_y)
     
                 # verificamos que no este en la lista abierta, si esta veremos si volvemos a calcular f,g,h 
                 if next_coor not in self.lista_abierta:
-                    g = costo
-                    h = self.heuristic(next_coor, self.coor_fin)
+                    g = costo + datos[0]
+                    h = self.heuristic(next_coor, self.coor_fin) 
                     f = g + h
                     self.lista_abierta[next_coor] = (g, h, f)
 
                     # primimimos por consola
                     print(f"Nodo: {next_coor}, G: {g}, H: {h}, F: {f}")
+                
+                # lista en la lista abierta
+                else:
+                    g = costo + datos[0]
+                    h = self.heuristic(next_coor, self.coor_fin) 
+                    f = g + h
+                    if g < self.lista_abierta[next_coor][0]:
+                        self.lista_abierta[next_coor] = (g, h, f)
 
                 self.update_callback()
 
@@ -115,11 +138,31 @@ class Algoritmo:
         if self.coor_inicio is None or self.coor_fin is None:
             return  # No hay inicio o fin
         
-        dimensiones = (len(self.board), len(self.board[0]))
-        print(f'Las dimensiones del tablero son: {dimensiones}')
-            
-        # Esta es mi lista cerrada
-        self.lista_cerrada.add(self.coor_inicio)
+        # dimensiones = (len(self.board), len(self.board[0]))
+        # print(f'Las dimensiones del tablero son: {dimensiones}')
+        self.curr_coor = self.coor_inicio   
+        self.datos = (0,0,0)
 
-        self.encontrar_vecinos(self.coor_inicio)
-        
+        while self.curr_coor != self.coor_fin:
+            self.encontrar_vecinos(self.curr_coor, self.datos)
+            
+            # print(f'Lista abierta: {self.lista_abierta}')
+
+            # En lugar de cambiar self.lista_abierta a una lista, obtenemos el nodo con la f más baja
+            if not self.lista_abierta:  # Verificar si la lista está vacía
+                print("No se encontró un camino")
+                break
+                
+            # Encontrar la coordenada con menor f
+            next_coor = min(self.lista_abierta, key=lambda k: self.lista_abierta[k][2])
+            self.datos = self.lista_abierta[next_coor]
+            
+            # Eliminarlo de la lista abierta
+            del self.lista_abierta[next_coor]
+            
+            self.curr_coor = next_coor
+            
+            # Agregamos la coordenada actual a la lista cerrada
+            self.lista_cerrada.add(self.curr_coor)
+
+            print(f'f mas pequena: {next_coor} datos {self.datos}')
