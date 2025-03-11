@@ -1,6 +1,7 @@
 import pygame
 import random
-
+import pandas as pd
+import csv
 # Inicializar Pygame
 pygame.init()
 
@@ -74,7 +75,7 @@ fondo_x2 = w
 def disparar_bala():
     global bala_disparada, velocidad_bala
     if not bala_disparada:
-        velocidad_bala = random.randint(-8, -3)  # Velocidad aleatoria negativa para la bala
+        velocidad_bala = random.randint(-20, -3)  # Velocidad aleatoria negativa para la bala
         bala_disparada = True
 
 # Función para reiniciar la posición de la bala
@@ -199,6 +200,13 @@ def reiniciar_juego():
     en_suelo = True
     # Mostrar los datos recopilados hasta el momento
     print("Datos recopilados para el modelo: ", datos_modelo)
+    # los guardamos en un csv
+    headings = ['velocidad_bala', 'distancia', 'salto_hecho']
+    with open('datos_modelo.csv', mode='w', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerow(headings)
+        writer.writerows(datos_modelo)
+    print(f"Archivo 'datos_modelo.csv' creado exitosamente.")
     mostrar_menu()  # Mostrar el menú de nuevo para seleccionar modo
 
 def main():
