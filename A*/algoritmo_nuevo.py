@@ -23,8 +23,12 @@ class Algoritmo:
         self.lista_abierta = {}
         # para actualizar la interfaz grafica
         self.update_callback = update_callback
+        # para almacenar el padre de cada nodo para reconstruir el camino
+        self.parents = {}
         # sera el camino del final
-        self.camino = {}
+        self.camino = []
+
+        self.nodos_datos = {}
         
     def definir_inicio_fin(self):
         """
@@ -56,6 +60,16 @@ class Algoritmo:
         return np.linalg.norm(np.array(a) - np.array(b))
 
     def encontrar_vecinos(self, curr_coor:tuple, datos:tuple):
+        """
+        Encuentra los vecinos del nodo actual y calcula sus valores g, h y f.
+
+        :param curr_coor: Coordenadas del nodo actual.
+        :type curr_coor: tuple
+        :param datos: Valores g, h y f del nodo actual.
+        :type datos: tuple
+        :return: True si encontró el nodo final, False en caso contrario.
+        :rtype: bool
+        """
         curr_x, curr_y = curr_coor
 
         # g es el costo de llegar al vecino
@@ -71,7 +85,7 @@ class Algoritmo:
             (0, +1, 10),    # Arriba
             (0, -1, 10),    # Abajo 
             (+1, +1, 14),   # Diagonal derecha arriba
-            (+1, -1, 14),   # Diagonal derecha abajo 
+            (+1, -1, 20),   # Diagonal derecha abajo 
             (-1, +1, 14),   # Diagonal izquierda arriba
             (-1, -1, 14)    # Diagonal izquierda abajo
         ]
@@ -85,41 +99,72 @@ class Algoritmo:
             # la coordenada en y es mayor a 0 y menor a la longitud del tablero
             if (0 <= next_x < len(self.board) and 0 <= next_y < len(self.board[0])) and (vecino_coor not in self.lista_cerrada):
                 
-
-                # Verificamos el vecino es el final
-                if (next_x, next_y) == self.coor_fin:
-                    # construimos el final
-                    print("Encontramos el camino")
-                    time.sleep(10)
-                    return 
+                # Verificamos si el vecino es el final
+                if vecino_coor == self.coor_fin:
+                    # Guardamos el padre del nodo final
+                    self.parents[vecino_coor] = curr_coor
+                    return True
     
                 # Cambiamos el color de la casilla, para saber que es un vecino
                 self.board[next_x][next_y].color = (9, 125, 100)
-                time.sleep(0.1)
 
                 # guardamos la coordenada
                 next_coor = (next_x, next_y)
     
-                # verificamos que no este en la lista abierta, si esta veremos si volvemos a calcular f,g,h 
-                if next_coor not in self.lista_abierta:
-                    g = costo + datos[0]
-                    h = self.heuristic(next_coor, self.coor_fin) 
-                    f = g + h
-                    self.lista_abierta[next_coor] = (g, h, f)
-
-                    # primimimos por consola
-                    print(f"Nodo: {next_coor}, G: {g}, H: {h}, F: {f}")
+                # Calculamos los nuevos valores
+                g = costo + datos[0]
+                h = self.heuristic(next_coor, self.coor_fin) 
+                f = g + h
                 
-                # lista en la lista abierta
-                else:
-                    g = costo + datos[0]
-                    h = self.heuristic(next_coor, self.coor_fin) 
-                    f = g + h
-                    if g < self.lista_abierta[next_coor][0]:
-                        self.lista_abierta[next_coor] = (g, h, f)
+                # Verificamos que no esté en la lista abierta o si el nuevo camino es mejor
+                if next_coor not in self.lista_abierta or g < self.lista_abierta[next_coor][0]:
+                    self.lista_abierta[next_coor] = (g, h, f)
+                    self.parents[next_coor] = curr_coor
+                    
+                    # Imprimimos por consola
+                    # print(f"Nodo: {next_coor}, G: {g}, H: {h}, F: {f}")
 
                 self.update_callback()
+                time.sleep(0.05)
+                
+        return False
 
+    def reconstruir_camino(self):
+        """
+        Reconstruye el camino desde el nodo final hasta el nodo inicial.
+
+        :return: None
+        """
+        current = self.coor_fin
+        path = []
+        
+        while current != self.coor_inicio:
+            path.append(current)
+            current = self.parents[current]
+            
+        path.append(self.coor_inicio)
+        path.reverse()  # Para tener el camino desde el inicio hasta el fin
+        
+        # Guardamos el camino
+        self.camino = path
+        
+        # Pintamos el camino en el tablero
+        for node in path:
+            if node != self.coor_inicio and node != self.coor_fin:  # No pintar inicio ni fin
+                x, y = node
+                self.board[x][y].color = (255, 215, 0)  # Color dorado para el camino
+                self.update_callback()
+                time.sleep(0.1)
+                
+        # Imprimimos los parámetros del camino
+        print("\nCamino encontrado:")
+        for i, node in enumerate(path):
+            if node in self.nodos_datos:
+                g, h, f = self.nodos_datos[node]
+                print(f"Paso {i}: {node}, G: {g}, H: {h}, F: {f}")
+        
+        print(f"Longitud del camino: {len(path)}")
+        
     def resolver(self):
         """
         Resuelve el problema de encontrar el camino más corto en un tablero
@@ -136,33 +181,51 @@ class Algoritmo:
 
         self.definir_inicio_fin()
         if self.coor_inicio is None or self.coor_fin is None:
-            return  # No hay inicio o fin
+            print("No hay inicio o fin definidos")
+            return
         
-        # dimensiones = (len(self.board), len(self.board[0]))
-        # print(f'Las dimensiones del tablero son: {dimensiones}')
-        self.curr_coor = self.coor_inicio   
-        self.datos = (0,0,0)
+        self.curr_coor = self.coor_inicio
+        self.lista_abierta[self.coor_inicio] = (0, self.heuristic(self.coor_inicio, self.coor_fin), self.heuristic(self.coor_inicio, self.coor_fin))
+        self.datos = self.lista_abierta[self.coor_inicio]
+        
+        found_path = False
 
-        while self.curr_coor != self.coor_fin:
-            self.encontrar_vecinos(self.curr_coor, self.datos)
+        while self.curr_coor != self.coor_fin and self.lista_abierta:
+            # Encontrar la coordenada con menor f mas peque
+            self.curr_coor = min(self.lista_abierta, key=lambda k: self.lista_abierta[k][2])
+            print('Lista abierta')
+            print(self.lista_abierta)
+            print('Lista abierta ordenada')
+            print(min(self.lista_abierta, key=lambda k: self.lista_abierta[k][2]))
+            self.datos = self.lista_abierta[self.curr_coor]
             
-            # print(f'Lista abierta: {self.lista_abierta}')
-
-            # En lugar de cambiar self.lista_abierta a una lista, obtenemos el nodo con la f más baja
-            if not self.lista_abierta:  # Verificar si la lista está vacía
-                print("No se encontró un camino")
+            # Si llegamos al final, terminamos
+            if self.curr_coor == self.coor_fin:
+                found_path = True
                 break
                 
-            # Encontrar la coordenada con menor f
-            next_coor = min(self.lista_abierta, key=lambda k: self.lista_abierta[k][2])
-            self.datos = self.lista_abierta[next_coor]
-            
             # Eliminarlo de la lista abierta
-            del self.lista_abierta[next_coor]
-            
-            self.curr_coor = next_coor
+            self.nodos_datos[self.curr_coor] = self.datos
+
+            del self.lista_abierta[self.curr_coor]
             
             # Agregamos la coordenada actual a la lista cerrada
             self.lista_cerrada.add(self.curr_coor)
-
-            print(f'f mas pequena: {next_coor} datos {self.datos}')
+            
+            # Cambiar color para mostrar que está en la lista cerrada (explorado)
+            if self.curr_coor != self.coor_inicio and self.curr_coor != self.coor_fin:
+                x, y = self.curr_coor
+                self.board[x][y].color = (200, 0, 0)  # Rojo para nodos explorados
+                self.update_callback()
+            
+            # Buscar vecinos
+            if self.encontrar_vecinos(self.curr_coor, self.datos):
+                found_path = True
+                break
+            
+            # print(f'Explorando: {self.curr_coor} con valores G: {self.datos[0]}, H: {self.datos[1]}, F: {self.datos[2]}')
+        
+        if found_path:
+            self.reconstruir_camino()
+        else:
+            print("No se encontró un camino")

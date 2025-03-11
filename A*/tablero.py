@@ -162,6 +162,12 @@ def main(ventana, ancho):
                 update_ui = lambda: dibujar(VENTANA, grid, FILAS, ANCHO_VENTANA)
                 algorit = algoritmo_nuevo.Algoritmo(nodos, grid, update_ui)
                 algorit.resolver()    
+            # limpiar todo
+            elif event.type == pygame.KEYDOWN and event.key == pygame.K_r:
+                inicio = None
+                fin = None
+                nodos.clear()
+                grid = crear_grid(FILAS, ancho)
 
     pygame.quit()
 
