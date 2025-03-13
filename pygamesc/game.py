@@ -2,6 +2,12 @@ import pygame
 import random
 import pandas as pd
 import csv
+
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.neural_network import MLPClassifier
+from sklearn.metrics import accuracy_score
+ 
 # Inicializar Pygame
 pygame.init()
 
@@ -71,11 +77,86 @@ bala_disparada = False
 fondo_x1 = 0
 fondo_x2 = w
 
+# Definimos la red neuronal con una capa oculta de 10 neuronas
+mlp = MLPClassifier(hidden_layer_sizes=(10,), activation='relu', solver='adam', max_iter=1000, random_state=42)
+
+# Variables para el modelo
+modelo_entrenado = False
+scaler = StandardScaler()  # Para normalizar los datos
+
+def entrenar_modelo():
+    """
+    Entrena un modelo de red neuronal para predecir si el jugador debe saltar o no.
+
+    Se utilizan los datos de entrenamiento guardados en la variable global
+    `datos_modelo`. Separamos los datos en X (características) y y (clases), y
+    luego se dividen en conjuntos de entrenamiento y prueba. Luego se entrenan
+    los datos de entrenamiento y se evalúa la precisión del modelo en los datos
+    de prueba.
+
+    La precisión se imprime en la consola.
+
+    Returns:
+        El modelo entrenado
+    """
+    global modelo_entrenado, scaler, mlp
+        
+    X, y = [], []
+    for i in range(len(datos_modelo)):
+        X.append([datos_modelo[i][0], datos_modelo[i][1]])  # velocidad_bala, distancia
+        y.append(datos_modelo[i][2])  # salto_hecho
+        
+    print("\n\nLas X son: ", X)
+    print("\n\nLas Y son: ", y)
+    
+    # Entrenamos la red neuronal
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    
+    # Normalizamos los datos
+    X_train = scaler.fit_transform(X_train)
+    X_test = scaler.transform(X_test)
+    
+    mlp.fit(X_train, y_train)
+    y_pred = mlp.predict(X_test)
+
+    accuracy = accuracy_score(y_test, y_pred)
+    print(f'\nPrecisión en test: {accuracy:.4f}')
+    
+    modelo_entrenado = True
+    return mlp
+
+def hacer_prediccion():
+    """
+    Predice si el jugador debe saltar o no usando el modelo entrenado.
+    
+    Returns:
+        bool: True si el jugador debe saltar, False en caso contrario
+    """
+    global mlp, modelo_entrenado, scaler, jugador, bala, velocidad_bala
+    
+    if not modelo_entrenado:
+        # Si el modelo no está entrenado aún, retornamos False (no saltar)
+        return False
+    
+    # Datos actuales: velocidad de la bala y distancia al jugador
+    distancia = abs(jugador.x - bala.x)
+    datos_actuales = [[velocidad_bala, distancia]]
+    
+    # Normalizamos los datos con el mismo scaler usado en el entrenamiento
+    datos_normalizados = scaler.transform(datos_actuales)
+    
+    # Hacemos la predicción
+    prediccion = mlp.predict(datos_normalizados)
+    
+    # Retornamos True si la predicción es 1 (saltar), False si es 0 (no saltar)
+    return prediccion[0] == 1
+    
+    
 # Función para disparar la bala
 def disparar_bala():
     global bala_disparada, velocidad_bala
     if not bala_disparada:
-        velocidad_bala = random.randint(-20, -3)  # Velocidad aleatoria negativa para la bala
+        velocidad_bala = random.randint(-20, -6)  # Velocidad aleatoria negativa para la bala
         bala_disparada = True
 
 # Función para reiniciar la posición de la bala
@@ -149,10 +230,13 @@ def update():
 # Función para guardar datos del modelo en modo manual
 def guardar_datos():
     global jugador, bala, velocidad_bala, salto
+    global curr_data
+    
     distancia = abs(jugador.x - bala.x)
     salto_hecho = 1 if salto else 0  # 1 si saltó, 0 si no saltó
     # Guardar velocidad de la bala, distancia al jugador y si saltó o no
     datos_modelo.append((velocidad_bala, distancia, salto_hecho))
+    
 
 # Función para pausar el juego y guardar los datos
 def pausa_juego():
@@ -180,6 +264,9 @@ def mostrar_menu():
                 if evento.key == pygame.K_a:
                     modo_auto = True
                     menu_activo = False
+                    if not modelo_entrenado:
+                        entrenar_modelo()
+                        
                 elif evento.key == pygame.K_m:
                     modo_auto = False
                     menu_activo = False
@@ -201,13 +288,15 @@ def reiniciar_juego():
     # Mostrar los datos recopilados hasta el momento
     print("Datos recopilados para el modelo: ", datos_modelo)
     # los guardamos en un csv
-    headings = ['velocidad_bala', 'distancia', 'salto_hecho']
-    with open('datos_modelo.csv', mode='w', newline='') as file:
-        writer = csv.writer(file)
-        writer.writerow(headings)
-        writer.writerows(datos_modelo)
-    print(f"Archivo 'datos_modelo.csv' creado exitosamente.")
+    #headings = ['velocidad_bala', 'distancia', 'salto_hecho']
+    #with open('./datos_modelo.csv', mode='w', newline='') as file:
+    #    writer = csv.writer(file)
+    #    writer.writerow(headings)
+    #    writer.writerows(datos_modelo)
+    #print(f"Archivo 'datos_modelo.csv' creado exitosamente.")
+    entrenar_modelo()   
     mostrar_menu()  # Mostrar el menú de nuevo para seleccionar modo
+    
 
 def main():
     global salto, en_suelo, bala_disparada
@@ -228,9 +317,9 @@ def main():
                     pausa_juego()
                 if evento.key == pygame.K_q:  # Presiona 'q' para terminar el juego
                     print("Juego terminado. Datos recopilados:", datos_modelo)
+                    
                     pygame.quit()
                     exit()
-
         if not pausa:
             # Modo manual: el jugador controla el salto
             if not modo_auto:
@@ -238,7 +327,15 @@ def main():
                     manejar_salto()
                 # Guardar los datos si estamos en modo manual
                 guardar_datos()
-
+                
+            elif modo_auto:
+                if en_suelo and not bala_disparada:
+                    if hacer_prediccion():
+                        salto = True
+                        en_suelo = False
+                if salto:
+                    manejar_salto()
+            
             # Actualizar el juego
             if not bala_disparada:
                 disparar_bala()
