@@ -316,10 +316,16 @@ El algoritmo A* es una técnica de búsqueda informada que:
 - **Dorado**: Camino final óptimo
 
 ## Resultados
+**Test 1**
+<br />
 ![test1](test1.png)
+<br />
 **Output en consola del Test 1**
+<br />
 ![output](out_test1.png)
-
-![test1](test2.png)
-**Output en consola del Test 1**
+**Test 2**
+![test2](test2.png)
+<br />
+**Output en consola del Test 2**
+<br />
 ![output](out_test2.png)
