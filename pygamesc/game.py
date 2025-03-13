@@ -293,8 +293,7 @@ def reiniciar_juego():
     #    writer = csv.writer(file)
     #    writer.writerow(headings)
     #    writer.writerows(datos_modelo)
-    #print(f"Archivo 'datos_modelo.csv' creado exitosamente.")
-    entrenar_modelo()   
+    #print(f"Archivo 'datos_modelo.csv' creado exitosamente.") 
     mostrar_menu()  # Mostrar el menú de nuevo para seleccionar modo
     
 
@@ -329,7 +328,7 @@ def main():
                 guardar_datos()
                 
             elif modo_auto:
-                if en_suelo and not bala_disparada:
+                if en_suelo:
                     if hacer_prediccion():
                         salto = True
                         en_suelo = False
