@@ -103,7 +103,7 @@ def entrenar_modelo():
         
     X, y = [], []
     for i in range(len(datos_modelo)):
-        X.append([datos_modelo[i][0], datos_modelo[i][1]])  # velocidad_bala, distancia
+        X.append([abs(datos_modelo[i][0]), datos_modelo[i][1]])  # velocidad_bala, distancia
         y.append(datos_modelo[i][2])  # salto_hecho
         
     print("\n\nLas X son: ", X)
@@ -140,7 +140,7 @@ def hacer_prediccion():
     
     # Datos actuales: velocidad de la bala y distancia al jugador
     distancia = abs(jugador.x - bala.x)
-    datos_actuales = [[velocidad_bala, distancia]]
+    datos_actuales = [[abs(velocidad_bala), distancia]]
     
     # Normalizamos los datos con el mismo scaler usado en el entrenamiento
     datos_normalizados = scaler.transform(datos_actuales)
@@ -319,6 +319,7 @@ def main():
                     
                     pygame.quit()
                     exit()
+                    
         if not pausa:
             # Modo manual: el jugador controla el salto
             if not modo_auto:
@@ -338,6 +339,7 @@ def main():
             # Actualizar el juego
             if not bala_disparada:
                 disparar_bala()
+                
             update()
 
         # Actualizar la pantalla
