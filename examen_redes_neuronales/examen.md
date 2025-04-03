@@ -19,6 +19,8 @@ Modelar una red neuronal que pueda identificar emociones a través los valores o
 
 - Definir función de activación es necesaria para este problema  
     + Relu
+- Definir el número maximo de entradas
+      - Para este ejercicio lo delimitaria a los puntos, las coordenadas x,y,z, pero no definiria número maximo de entradas.
 - ¿Que valores a la salida de la red se podrian esperar?
     - Los valores de salida se podrian esperar es la probabilidad de que sea X emocion, pero si hablamos un valor en concreto, no se sabe.
 
