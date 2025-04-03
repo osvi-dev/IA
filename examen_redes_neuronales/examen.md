@@ -1,6 +1,6 @@
 # Evalución Redes Neuronales Mediapipe
 
-Nombre: José Osvaldo Constantino Bautista
+Nombre: José Osvaldo Constantino Bautista  
 Modelar una red neuronal que pueda identificar emociones a través los valores obtenidos de los landmarks que genera mediapipe.  
 
 - Definir el tipo de red neuronal y describir cada una de sus partes
