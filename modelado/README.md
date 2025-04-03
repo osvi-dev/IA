@@ -18,4 +18,4 @@ Para este caso podemos mapear los puntos 205 y 425, correspondientes a las mejil
 ![alt text](hablando.png)
 
 ## Referencia de los puntos mencionados.
-![alt text](https://storage.googleapis.com/mediapipe-assets/documentation/mediapipe_face_landmark_fullsize.png)
+![alt text](puntos.png)
