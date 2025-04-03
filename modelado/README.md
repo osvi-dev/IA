@@ -15,7 +15,7 @@ En escencia: Cejas inclinadas + boca hacia abajo = Persona triste
 ## Caso: Hablando
 Para este caso podemos mapear los puntos 205 y 425, correspondientes a las mejillas, para ver si tienen algún cambio en su cordenada "y", lo que podria ser un indicativo que una persona esta hablando, ya que al momento pronunciar ciertas palabras, algunas personas tendemos a mover las mejillas, pero para tener más certeza también podemos fijarnos en los puntos: 13 y 14 a mí opinión son los puntos de maor relevancia, porque son el punto medio de los labios superior como inferior y estos al momento de hablar tienen a moverse en la coordenada "y".
 
-![alt text](image.png)
+![alt text](hablando.png)
 
 ## Referencia de los puntos mencionados.
 ![alt text](https://storage.googleapis.com/mediapipe-assets/documentation/mediapipe_face_landmark_fullsize.png)
