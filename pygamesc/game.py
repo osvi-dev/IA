@@ -7,7 +7,8 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.neural_network import MLPClassifier
 from sklearn.metrics import accuracy_score
- 
+from sklearn.tree import DecisionTreeClassifier
+
 # Inicializar Pygame
 pygame.init()
 
@@ -38,6 +39,10 @@ pausa = False
 fuente = pygame.font.SysFont('Arial', 24)
 menu_activo = True
 modo_auto = False  # Indica si el modo de juego es automático
+
+# Variables para controlar el algoritmo elegido
+usar_red_neuronal = False 
+usar_arbol_decision = False
 
 # Lista para guardar los datos de velocidad, distancia y salto (target)
 datos_modelo = []
@@ -80,11 +85,14 @@ fondo_x2 = w
 # Definimos la red neuronal con una capa oculta de 10 neuronas
 mlp = MLPClassifier(hidden_layer_sizes=(10,), activation='relu', solver='adam', max_iter=1000, random_state=42)
 
+# Definimos el Decision Tree
+clf = DecisionTreeClassifier()
+
 # Variables para el modelo
 modelo_entrenado = False
 scaler = StandardScaler()  # Para normalizar los datos
 
-def entrenar_modelo():
+def entrenar_red_neuronal():
     """
     Entrena un modelo de red neuronal para predecir si el jugador debe saltar o no.
 
@@ -99,7 +107,11 @@ def entrenar_modelo():
     Returns:
         El modelo entrenado
     """
-    global modelo_entrenado, scaler, mlp
+    global modelo_entrenado, mlp, scaler
+    
+    if len(datos_modelo) == 0:
+        print("No hay datos para entrenar el modelo. Juega en modo manual primero.")
+        return None
         
     X, y = [], []
     for i in range(len(datos_modelo)):
@@ -120,12 +132,12 @@ def entrenar_modelo():
     y_pred = mlp.predict(X_test)
 
     accuracy = accuracy_score(y_test, y_pred)
-    print(f'\nPrecisión en test: {accuracy:.4f}')
+    print(f'\nPrecisión de la Red Neuronal en test: {accuracy:.4f}')
     
     modelo_entrenado = True
     return mlp
 
-def hacer_prediccion():
+def hacer_prediccion_red_neuronal():
     """
     Predice si el jugador debe saltar o no usando el modelo entrenado.
     
@@ -150,8 +162,85 @@ def hacer_prediccion():
     
     # Retornamos True si la predicción es 1 (saltar), False si es 0 (no saltar)
     return prediccion[0] == 1
+ 
+def entrenar_decision_tree():
+    """
+    Entrena un modelo de Decision Tree para predecir si el jugador debe saltar o no.
+
+    Se utilizan los datos de entrenamiento guardados en la variable global
+    `datos_modelo`. Separamos los datos en X (características) y y (clases), y
+    luego se dividen en conjuntos de entrenamiento y prueba. Luego se entrenan
+    los datos de entrenamiento y se evalúa la precisión del modelo en los datos
+    de prueba.
+
+    La precisión se imprime en la consola.
+
+    Returns:
+        El modelo entrenado
+    """
+    global modelo_entrenado, clf
     
+    if len(datos_modelo) == 0:
+        print("No hay datos para entrenar el modelo. Juega en modo manual primero.")
+        return None
+        
+    X, y = [], []
+    for i in range(len(datos_modelo)):
+        X.append([abs(datos_modelo[i][0]), datos_modelo[i][1]])  # velocidad_bala, distancia
+        y.append(datos_modelo[i][2])  # salto_hecho
+        
+    print("\n\nLas X son: ", X)
+    print("\n\nLas Y son: ", y)
     
+    # Entrenamos el árbol de decisión
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    
+    clf.fit(X_train, y_train)
+    y_pred = clf.predict(X_test)
+
+    accuracy = accuracy_score(y_test, y_pred)
+    print(f'\nPrecisión del Árbol de Decisión en test: {accuracy:.4f}')
+    
+    modelo_entrenado = True
+    return clf   
+
+def hacer_prediccion_decision_tree():
+    """
+    Predice si el jugador debe saltar o no usando el árbol de decisión.
+    
+    Returns:
+        bool: True si el jugador debe saltar, False en caso contrario
+    """
+    global clf, modelo_entrenado, jugador, bala, velocidad_bala
+    
+    if not modelo_entrenado:
+        # Si el modelo no está entrenado aún, retornamos False (no saltar)
+        return False
+    
+    # Datos actuales: velocidad de la bala y distancia al jugador
+    distancia = abs(jugador.x - bala.x)
+    datos_actuales = [[abs(velocidad_bala), distancia]]
+    
+    # Hacemos la predicción
+    prediccion = clf.predict(datos_actuales)
+    
+    # Retornamos True si la predicción es 1 (saltar), False si es 0 (no saltar)
+    return prediccion[0] == 1
+
+def hacer_prediccion():
+    """
+    Función que decide qué modelo usar para hacer la predicción.
+    
+    Returns:
+        bool: True si el jugador debe saltar, False en caso contrario
+    """
+    if usar_red_neuronal:
+        return hacer_prediccion_red_neuronal()
+    elif usar_arbol_decision:
+        return hacer_prediccion_decision_tree()
+    else:
+        return False
+
 # Función para disparar la bala
 def disparar_bala():
     global bala_disparada, velocidad_bala
@@ -230,13 +319,11 @@ def update():
 # Función para guardar datos del modelo en modo manual
 def guardar_datos():
     global jugador, bala, velocidad_bala, salto
-    global curr_data
     
     distancia = abs(jugador.x - bala.x)
     salto_hecho = 1 if salto else 0  # 1 si saltó, 0 si no saltó
     # Guardar velocidad de la bala, distancia al jugador y si saltó o no
     datos_modelo.append((velocidad_bala, distancia, salto_hecho))
-    
 
 # Función para pausar el juego y guardar los datos
 def pausa_juego():
@@ -249,10 +336,18 @@ def pausa_juego():
 
 # Función para mostrar el menú y seleccionar el modo de juego
 def mostrar_menu():
-    global menu_activo, modo_auto
+    global menu_activo, modo_auto, usar_red_neuronal, usar_arbol_decision, modelo_entrenado
     pantalla.fill(NEGRO)
-    texto = fuente.render("Presiona 'A' para Auto, 'M' para Manual, o 'Q' para Salir", True, BLANCO)
-    pantalla.blit(texto, (w // 4, h // 2))
+    texto1 = fuente.render("Presiona 'N' para usar Red Neuronal", True, BLANCO)
+    texto2 = fuente.render("Presiona 'A' para usar Árbol de Decisión", True, BLANCO)
+    texto3 = fuente.render("Presiona 'M' para Modo Manual (entrenamiento)", True, BLANCO)
+    texto4 = fuente.render("Presiona 'Q' para Salir", True, BLANCO)
+    
+    pantalla.blit(texto1, (w // 4, h // 2 - 60))
+    pantalla.blit(texto2, (w // 4, h // 2 - 30))
+    pantalla.blit(texto3, (w // 4, h // 2))
+    pantalla.blit(texto4, (w // 4, h // 2 + 30))
+    
     pygame.display.flip()
 
     while menu_activo:
@@ -261,12 +356,32 @@ def mostrar_menu():
                 pygame.quit()
                 exit()
             if evento.type == pygame.KEYDOWN:
-                if evento.key == pygame.K_a:
+                if evento.key == pygame.K_n:
                     modo_auto = True
                     menu_activo = False
-                    if not modelo_entrenado:
-                        entrenar_modelo()
+                    usar_red_neuronal = True
+                    usar_arbol_decision = False
+                    
+                    # Verificar si hay datos para entrenar
+                    if not modelo_entrenado and len(datos_modelo) > 0:
+                        entrenar_red_neuronal()
+                    elif len(datos_modelo) == 0:
+                        print("No hay datos para entrenar el modelo. Juega en modo manual primero.")
+                        modo_auto = False  # Volver a modo manual si no hay datos
                         
+                elif evento.key == pygame.K_a:
+                    modo_auto = True
+                    menu_activo = False
+                    usar_red_neuronal = False
+                    usar_arbol_decision = True
+                    
+                    # Verificar si hay datos para entrenar
+                    if not modelo_entrenado and len(datos_modelo) > 0:
+                        entrenar_decision_tree()
+                    elif len(datos_modelo) == 0:
+                        print("No hay datos para entrenar el modelo. Juega en modo manual primero.")
+                        modo_auto = False  # Volver a modo manual si no hay datos
+                                
                 elif evento.key == pygame.K_m:
                     modo_auto = False
                     menu_activo = False
@@ -287,16 +402,17 @@ def reiniciar_juego():
     en_suelo = True
     # Mostrar los datos recopilados hasta el momento
     print("Datos recopilados para el modelo: ", datos_modelo)
-    # los guardamos en un csv
-    #headings = ['velocidad_bala', 'distancia', 'salto_hecho']
-    #with open('./datos_modelo.csv', mode='w', newline='') as file:
+    
+    # Guardamos en un csv (opcional, comentado por defecto)
+    # headings = ['velocidad_bala', 'distancia', 'salto_hecho']
+    #with open('./prueba1.csv', mode='w', newline='') as file:
     #    writer = csv.writer(file)
     #    writer.writerow(headings)
     #    writer.writerows(datos_modelo)
-    #print(f"Archivo 'datos_modelo.csv' creado exitosamente.") 
+    #print(f"Archivo 'prueba1.csv' creado exitosamente.") 
+    
     mostrar_menu()  # Mostrar el menú de nuevo para seleccionar modo
     
-
 def main():
     global salto, en_suelo, bala_disparada
 
@@ -328,8 +444,10 @@ def main():
                 # Guardar los datos si estamos en modo manual
                 guardar_datos()
                 
+            # Modo automático: el modelo predice cuándo saltar
             elif modo_auto:
                 if en_suelo:
+                    # Usar la función unificada de predicción
                     if hacer_prediccion():
                         salto = True
                         en_suelo = False
