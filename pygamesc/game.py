@@ -8,6 +8,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.neural_network import MLPClassifier
 from sklearn.metrics import accuracy_score
 from sklearn.tree import DecisionTreeClassifier
+from sklearn.linear_model import LogisticRegression
 
 # Inicializar Pygame
 pygame.init()
@@ -43,6 +44,7 @@ modo_auto = False  # Indica si el modo de juego es automático
 # Variables para controlar el algoritmo elegido
 usar_red_neuronal = False 
 usar_arbol_decision = False
+usar_regresion_logistica = False
 
 # Lista para guardar los datos de velocidad, distancia y salto (target)
 datos_modelo = []
@@ -88,9 +90,36 @@ mlp = MLPClassifier(hidden_layer_sizes=(10,), activation='relu', solver='adam', 
 # Definimos el Decision Tree
 clf = DecisionTreeClassifier()
 
+# Definimos el Logistic Regression
+log_reg = LogisticRegression()
+
+
 # Variables para el modelo
 modelo_entrenado = False
 scaler = StandardScaler()  # Para normalizar los datos
+
+def split_data():
+    """
+    Divide los datos en conjuntos de entrenamiento y prueba.
+    
+    Returns:
+        X_train, X_test, y_train, y_test: Conjuntos de datos divididos
+    """
+    global datos_modelo
+    
+    if len(datos_modelo) == 0:
+        print("No hay datos para entrenar el modelo. Juega en modo manual primero.")
+        return None
+    
+    X, y = [], []
+    for i in range(len(datos_modelo)):
+        X.append([abs(datos_modelo[i][0]), datos_modelo[i][1]])  # velocidad_bala, distancia
+        y.append(datos_modelo[i][2])  # salto_hecho
+    
+    print("\n\nLas X son: ", X)
+    print("\n\nLas Y son: ", y)
+    
+    return train_test_split(X, y, test_size=0.2, random_state=42)
 
 def entrenar_red_neuronal():
     """
@@ -108,21 +137,10 @@ def entrenar_red_neuronal():
         El modelo entrenado
     """
     global modelo_entrenado, mlp, scaler
-    
-    if len(datos_modelo) == 0:
-        print("No hay datos para entrenar el modelo. Juega en modo manual primero.")
-        return None
         
-    X, y = [], []
-    for i in range(len(datos_modelo)):
-        X.append([abs(datos_modelo[i][0]), datos_modelo[i][1]])  # velocidad_bala, distancia
-        y.append(datos_modelo[i][2])  # salto_hecho
-        
-    print("\n\nLas X son: ", X)
-    print("\n\nLas Y son: ", y)
     
     # Entrenamos la red neuronal
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_test, y_train, y_test = split_data()
     
     # Normalizamos los datos
     X_train = scaler.fit_transform(X_train)
@@ -180,20 +198,8 @@ def entrenar_decision_tree():
     """
     global modelo_entrenado, clf
     
-    if len(datos_modelo) == 0:
-        print("No hay datos para entrenar el modelo. Juega en modo manual primero.")
-        return None
-        
-    X, y = [], []
-    for i in range(len(datos_modelo)):
-        X.append([abs(datos_modelo[i][0]), datos_modelo[i][1]])  # velocidad_bala, distancia
-        y.append(datos_modelo[i][2])  # salto_hecho
-        
-    print("\n\nLas X son: ", X)
-    print("\n\nLas Y son: ", y)
-    
     # Entrenamos el árbol de decisión
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_test, y_train, y_test = split_data()
     
     clf.fit(X_train, y_train)
     y_pred = clf.predict(X_test)
@@ -227,6 +233,34 @@ def hacer_prediccion_decision_tree():
     # Retornamos True si la predicción es 1 (saltar), False si es 0 (no saltar)
     return prediccion[0] == 1
 
+def entrenar_logistic_regression():
+    global modelo_entrenado, log_reg
+    
+    X_train, X_test, y_train, y_test = split_data()
+    
+    log_reg.fit(X_train, y_train)
+    y_pred = log_reg.predict(X_test)
+
+    accuracy = accuracy_score(y_test, y_pred)
+    print(f'\nPrecisión de la Regresión Logística en test: {accuracy:.4f}')
+    
+    modelo_entrenado = True
+    return log_reg
+
+def hacer_prediccion_logistic_regression():
+    global log_reg, modelo_entrenado, jugador, bala, velocidad_bala
+    
+    if not modelo_entrenado:
+        # Si el modelo no está entrenado aún, retornamos False (no saltar)
+        return False
+    # Datos actuales: velocidad de la bala y distancia al jugador
+    distancia = abs(jugador.x - bala.x)
+    datos_actuales = [[abs(velocidad_bala), distancia]]
+    # Hacemos la predicción
+    prediccion = log_reg.predict(datos_actuales)
+    # Retornamos True si la predicción es 1 (saltar), False si es 0 (no saltar)
+    return prediccion[0] == 1
+        
 def hacer_prediccion():
     """
     Función que decide qué modelo usar para hacer la predicción.
@@ -238,6 +272,8 @@ def hacer_prediccion():
         return hacer_prediccion_red_neuronal()
     elif usar_arbol_decision:
         return hacer_prediccion_decision_tree()
+    elif usar_regresion_logistica:
+        return hacer_prediccion_logistic_regression()
     else:
         return False
 
@@ -336,17 +372,19 @@ def pausa_juego():
 
 # Función para mostrar el menú y seleccionar el modo de juego
 def mostrar_menu():
-    global menu_activo, modo_auto, usar_red_neuronal, usar_arbol_decision, modelo_entrenado
+    global menu_activo, modo_auto, usar_red_neuronal, usar_arbol_decision, usar_regresion_logistica, modelo_entrenado
     pantalla.fill(NEGRO)
     texto1 = fuente.render("Presiona 'N' para usar Red Neuronal", True, BLANCO)
     texto2 = fuente.render("Presiona 'A' para usar Árbol de Decisión", True, BLANCO)
-    texto3 = fuente.render("Presiona 'M' para Modo Manual (entrenamiento)", True, BLANCO)
-    texto4 = fuente.render("Presiona 'Q' para Salir", True, BLANCO)
+    texto3 = fuente.render("Presiona 'L' para usar Regresión Logística", True, BLANCO)
+    texto4 = fuente.render("Presiona 'M' para Modo Manual (entrenamiento)", True, BLANCO)
+    texto5 = fuente.render("Presiona 'Q' para Salir", True, BLANCO)
     
     pantalla.blit(texto1, (w // 4, h // 2 - 60))
     pantalla.blit(texto2, (w // 4, h // 2 - 30))
     pantalla.blit(texto3, (w // 4, h // 2))
     pantalla.blit(texto4, (w // 4, h // 2 + 30))
+    pantalla.blit(texto5, (w // 4, h // 2 + 60))
     
     pygame.display.flip()
 
@@ -361,9 +399,12 @@ def mostrar_menu():
                     menu_activo = False
                     usar_red_neuronal = True
                     usar_arbol_decision = False
+                    usar_regresion_logistica = False
                     
                     # Verificar si hay datos para entrenar
-                    if not modelo_entrenado and len(datos_modelo) > 0:
+                    if len(datos_modelo) > 0:
+                        # Forzar el reentrenamiento al cambiar de modelo
+                        modelo_entrenado = False
                         entrenar_red_neuronal()
                     elif len(datos_modelo) == 0:
                         print("No hay datos para entrenar el modelo. Juega en modo manual primero.")
@@ -374,14 +415,33 @@ def mostrar_menu():
                     menu_activo = False
                     usar_red_neuronal = False
                     usar_arbol_decision = True
+                    usar_regresion_logistica = False
                     
                     # Verificar si hay datos para entrenar
-                    if not modelo_entrenado and len(datos_modelo) > 0:
+                    if len(datos_modelo) > 0:
+                        # Forzar el reentrenamiento al cambiar de modelo
+                        modelo_entrenado = False
                         entrenar_decision_tree()
                     elif len(datos_modelo) == 0:
                         print("No hay datos para entrenar el modelo. Juega en modo manual primero.")
                         modo_auto = False  # Volver a modo manual si no hay datos
-                                
+                        
+                elif evento.key == pygame.K_l:
+                    modo_auto = True
+                    menu_activo = False
+                    usar_regresion_logistica = True
+                    usar_red_neuronal = False
+                    usar_arbol_decision = False
+                    
+                    # Verificar si hay datos para entrenar
+                    if len(datos_modelo) > 0:
+                        # Forzar el reentrenamiento al cambiar de modelo
+                        modelo_entrenado = False
+                        entrenar_logistic_regression()
+                    elif len(datos_modelo) == 0:
+                        print("No hay datos para entrenar el modelo. Juega en modo manual primero.")
+                        modo_auto = False
+                                        
                 elif evento.key == pygame.K_m:
                     modo_auto = False
                     menu_activo = False
@@ -389,10 +449,9 @@ def mostrar_menu():
                     print("Juego terminado. Datos recopilados:", datos_modelo)
                     pygame.quit()
                     exit()
-
 # Función para reiniciar el juego tras la colisión
 def reiniciar_juego():
-    global menu_activo, jugador, bala, nave, bala_disparada, salto, en_suelo
+    global menu_activo, jugador, bala, nave, bala_disparada, salto, en_suelo, modelo_entrenado
     menu_activo = True  # Activar de nuevo el menú
     jugador.x, jugador.y = 50, h - 100  # Reiniciar posición del jugador
     bala.x = w - 50  # Reiniciar posición de la bala
@@ -400,6 +459,7 @@ def reiniciar_juego():
     bala_disparada = False
     salto = False
     en_suelo = True
+    modelo_entrenado = False  # Reiniciar el estado del modelo
     # Mostrar los datos recopilados hasta el momento
     print("Datos recopilados para el modelo: ", datos_modelo)
     
