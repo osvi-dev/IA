@@ -6,7 +6,11 @@ Este código implementa un juego simple utilizando Pygame, donde un jugador debe
 - **Pygame**: Para la creación de la interfaz gráfica y manejo de eventos.
 - **Random**: Generación de velocidades aleatorias para las balas.
 - **Pandas/CSV**: Manejo de datos (comentado en el código).
-- **Scikit-learn**: Entrenamiento de una red neuronal (`MLPClassifier`) para el modo automático.
+- **Scikit-learn**: Implementación de tres algoritmos de aprendizaje automático:
+
+  - `MLPClassifier`: Red neuronal para modo automático.
+  - `DecisionTreeClassifier`: Árbol de decisión para modo automático.
+  - `LogisticRegression`: Regresión logística para modo automático.
 
 ---
 
@@ -17,7 +21,13 @@ Este código implementa un juego simple utilizando Pygame, donde un jugador debe
 - **Bala**: Se dispara desde la derecha hacia el jugador.
 - **Nave UFO**: Posicionada en la parte derecha de la pantalla.
 - **Fondo**: Dos imágenes en movimiento continuo para efecto de desplazamiento.
-- **Menú**: Permite seleccionar entre modo manual (`M`), automático (`A`), o salir (`Q`).
+- **Menú**: Permite seleccionar entre:
+  - modo manual (`M`)
+  - Red Neuronal (`N`) para modo automático
+  - Árbol de Decisión (`A`) para modo automático
+  - Regresión Logística (`L`) para modo automático
+  - Salir (`Q`)
+
 
 ### 2. **Mecánicas del Juego**
 - **Salto**: Controlado por gravedad y velocidad inicial.
@@ -36,9 +46,13 @@ Este código implementa un juego simple utilizando Pygame, donde un jugador debe
    - Almacenamiento en `datos_modelo`.
 
 2. **Entrenamiento del Modelo**:
-   - **Algoritmo**: `MLPClassifier` (Perceptrón Multicapa).
    - **Preprocesamiento**: Normalización con `StandardScaler`.
    - **División de Datos**: 80% entrenamiento, 20% prueba.
+   - **Algoritmos disponibles**:
+
+  - `Red Neuronal (MLPClassifier)`: Perceptrón multicapa con una capa oculta de 10 neuronas.
+  - `Árbol de Decisión (DecisionTreeClassifier)`: Modelo basado en reglas para clasificación.
+  - `Regresión Logística (LogisticRegression)`: Modelo lineal para clasificación binaria.
    - **Precisión**: Evaluada con `accuracy_score`.
 
 3. **Predicción (Modo Automático)**:
@@ -55,8 +69,25 @@ Este código implementa un juego simple utilizando Pygame, donde un jugador debe
 - `guardar_datos()`: Almacena datos en modo manual para entrenamiento.
 
 ### 🧠 Funciones del Modelo
-- `entrenar_modelo()`: Entrena la red neuronal con los datos recolectados.
-- `hacer_prediccion()`: Devuelve `True`/`False` según la decisión del modelo.
+- `split_data()`: Divide los datos recopilados en conjuntos de entrenamiento y prueba.
+Funciones específicas por modelo:
+
+- **Red Neuronal**:
+  - `entrenar_red_neuronal()`: Entrena el modelo MLP con los datos recolectados.
+  - `hacer_prediccion_red_neuronal()`: Decide saltos según la red neuronal.
+
+- **Árbol de Decisión**:
+
+  - `entrenar_decision_tree()`: Entrena el árbol de decisión.
+  - `hacer_prediccion_decision_tree()`: Decide saltos según el árbol.
+
+
+- **Regresión Logística**:
+
+  - `entrenar_logistic_regression()`: Entrena el modelo de regresión logística.
+  - `hacer_prediccion_logistic_regression()`: Decide saltos según este modelo.
+
+- hacer_prediccion(): Función unificada que delega a la predicción del modelo seleccionado.
 
 ---
 
@@ -70,10 +101,10 @@ Este código implementa un juego simple utilizando Pygame, donde un jugador debe
    - Teclas (`Espacio` para saltar, `P` para pausa, `Q` para salir).
 2. **Modo de Juego**:
    - **Manual**: Guarda datos cada frame.
-   - **Automático**: Usa el modelo para saltar.
+   - **Automático**:  Se usa el modelo seleccionado (red neuronal, árbol de decisión o regresión logística) para determinar cuándo saltar.
 3. **Actualización**: 
    - Movimiento del fondo, animaciones, y renderizado.
-   - Reinicio tras colisión o activación del menú.
+   - Reinicio tras colisión y vuelta al menú.
 
 ---
 
