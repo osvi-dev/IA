@@ -32,7 +32,7 @@ menu = None
 # Variables de salto
 salto = False
 salto_altura = 15  # Velocidad inicial de salto
-gravedad = 1
+gravedad = 2
 en_suelo = True
 
 movimiento_izquierda = False
@@ -291,7 +291,6 @@ def hacer_prediccion():
 def disparar_bala():
     global bala_disparada, velocidad_bala
     if not bala_disparada:
-        velocidad_bala = random.randint(-15, -6)  # Velocidad aleatoria negativa para la bala
         bala_disparada = True
         
 def disparar_bala2():
@@ -306,9 +305,10 @@ def reset_bala():
     bala_disparada = False
 
 def reset_bala2():
-    global bala2, bala_disparada2
+    global bala2, bala_disparada2, movimiento_derecha, movimiento_izquierda
     bala2.y = 100  # Reiniciar la posición de la segunda bala
-    bala_disparada2 = False
+    bala_disparada2, movimiento_derecha, movimiento_izquierda = False, False, False  # Reiniciar el movimiento
+    jugador.x = 200  # Reiniciar la posición del jugador
     
 # Función para manejar el salto
 def manejar_salto():
@@ -324,8 +324,11 @@ def manejar_salto():
             salto = False
             salto_altura = 15  # Restablecer la velocidad de salto
             en_suelo = True
-            
-def manejar_movimiento():
+
+# Función para manejar el movimiento lateral
+
+           
+def manejar_movimiento_lateral():
     global jugador, movimiento_izquierda, movimiento_derecha, paso_lateral
 
     if movimiento_izquierda and jugador.x > 170:
@@ -487,7 +490,8 @@ def mostrar_menu():
                     exit()
 # Función para reiniciar el juego tras la colisión
 def reiniciar_juego():
-    global menu_activo, jugador, bala, nave, bala_disparada, salto, en_suelo, modelo_entrenado
+    global menu_activo, jugador, bala, nave, bala_disparada, bala_disparada2, salto, en_suelo, modelo_entrenado, \
+        movimiento_izquierda, movimiento_derecha
     menu_activo = True  # Activar de nuevo el menú
     jugador.x, jugador.y = 200, h - 100  # Reiniciar posición del jugador
     bala.x = w - 50  # Reiniciar posición de la bala
@@ -498,13 +502,14 @@ def reiniciar_juego():
     salto = False
     en_suelo = True
     modelo_entrenado = False  # Reiniciar el estado del modelo
+    movimiento_izquierda, movimiento_derecha = False, False  # Reiniciar el movimiento lateral  
     # Mostrar los datos recopilados hasta el momento
     print("Datos recopilados para el modelo: ", datos_modelo)
     
     mostrar_menu()  # Mostrar el menú de nuevo para seleccionar modo
     
 def main():
-    global salto, en_suelo, bala_disparada, bala_disparada2
+    global salto, en_suelo, bala_disparada, bala_disparada2, movimiento_izquierda, movimiento_derecha
 
     reloj = pygame.time.Clock()
     mostrar_menu()  # Mostrar el menú al inicio
@@ -518,6 +523,11 @@ def main():
                 if evento.key == pygame.K_SPACE and en_suelo and not pausa:  # Detectar la tecla espacio para saltar
                     salto = True
                     en_suelo = False
+                if evento.key == pygame.K_LEFT:  # Presiona la tecla izquierda
+                    movimiento_izquierda = True
+                if evento.key == pygame.K_RIGHT:  # Presiona la tecla derecha
+                    movimiento_derecha = True
+                    
                 if evento.key == pygame.K_p:  # Presiona 'p' para pausar el juego
                     pausa_juego()
                 if evento.key == pygame.K_q:  # Presiona 'q' para terminar el juego
@@ -527,6 +537,7 @@ def main():
                     exit()
                     
         if not pausa:
+            manejar_movimiento_lateral()
             # Modo manual: el jugador controla el salto
             if not modo_auto:
                 if salto:
@@ -543,6 +554,7 @@ def main():
                         en_suelo = False
                 if salto:
                     manejar_salto()
+                    
             
             # Actualizar el juego
             if not bala_disparada:
