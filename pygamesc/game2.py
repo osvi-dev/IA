@@ -2,6 +2,7 @@ import pygame
 import random
 import pandas as pd
 import csv
+from time import sleep
 
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
@@ -32,12 +33,12 @@ menu = None
 # Variables de salto
 salto = False
 salto_altura = 15  # Velocidad inicial de salto
-gravedad = 2
+gravedad = 1.5
 en_suelo = True
 
 movimiento_izquierda = False
 movimiento_derecha = False
-paso_lateral = 30
+paso_lateral = 60
 # Variables de pausa y menú
 pausa = False
 fuente = pygame.font.SysFont('Arial', 24)
@@ -325,15 +326,13 @@ def manejar_salto():
             salto_altura = 15  # Restablecer la velocidad de salto
             en_suelo = True
 
-# Función para manejar el movimiento lateral
-
-           
+# Función para manejar el movimiento lateral           
 def manejar_movimiento_lateral():
     global jugador, movimiento_izquierda, movimiento_derecha, paso_lateral
 
-    if movimiento_izquierda and jugador.x > 170:
+    if movimiento_izquierda and jugador.x > 140:
         jugador.x -= paso_lateral  # Mover a la izquierda
-    if movimiento_derecha and jugador.x < 230:
+    if movimiento_derecha and jugador.x < 260:
         jugador.x += paso_lateral  # Mover a la derecha
         
         
