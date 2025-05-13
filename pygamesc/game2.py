@@ -50,7 +50,7 @@ usar_red_neuronal = False
 usar_arbol_decision = False
 usar_regresion_logistica = False
 
-# Lista para guardar los datos de velocidad, distancia y salto (target)
+# Lista para guardar los datos de velocidad, distancia_x y salto (target)
 datos_modelo = []
 
 # Cargar las imágenes
@@ -97,7 +97,7 @@ fondo_x2 = w
 
 # Definimos la red neuronal con una capa oculta de 10 neuronas
 mlp = MLPClassifier(hidden_layer_sizes=(10,), activation='relu', solver='adam', max_iter=1000, random_state=42)
-
+mlp2 = MLPClassifier(hidden_layer_sizes=(10,), activation='relu', solver='adam', max_iter=1000, random_state=42)
 # Definimos el Decision Tree
 clf = DecisionTreeClassifier()
 
@@ -109,7 +109,7 @@ log_reg = LogisticRegression()
 modelo_entrenado = False
 scaler = StandardScaler()  # Para normalizar los datos
 
-def split_data():
+def split_data_x():
     """
     Divide los datos en conjuntos de entrenamiento y prueba.
     
@@ -124,8 +124,19 @@ def split_data():
     
     X, y = [], []
     for i in range(len(datos_modelo)):
-        X.append([abs(datos_modelo[i][0]), datos_modelo[i][1]])  # velocidad_bala, distancia
-        y.append(datos_modelo[i][2])  # salto_hecho
+        X.append([abs(datos_modelo[i][0]), datos_modelo[i][1], datos_modelo[i][2], datos_modelo[i][3], datos_modelo[i][4]])  # velocidad_bala, distancia_x, distancia_y, izquierda, derecha
+        y.append(datos_modelo[i][-1])  # salto_hecho
+    
+    print("\n\nLas X son: ", X)
+    print("\n\nLas Y son: ", y)
+    
+    return train_test_split(X, y, test_size=0.2, random_state=42)
+
+def split_data_izquierda():
+    X, y = [], []
+    for i in range(len(datos_modelo)):
+        X.append([abs(datos_modelo[i][0]), datos_modelo[i][1], datos_modelo[i][2], datos_modelo[i][4], datos_modelo[i][5]])  # velocidad_bala, distancia_x, distancia_y, derecha, salto_hecho
+        y.append(datos_modelo[i][3])  # izquierda
     
     print("\n\nLas X son: ", X)
     print("\n\nLas Y son: ", y)
@@ -151,7 +162,7 @@ def entrenar_red_neuronal():
         
     
     # Entrenamos la red neuronal
-    X_train, X_test, y_train, y_test = split_data()
+    X_train, X_test, y_train, y_test = split_data_x()
     
     # Normalizamos los datos
     X_train = scaler.fit_transform(X_train)
@@ -173,21 +184,66 @@ def hacer_prediccion_red_neuronal():
     Returns:
         bool: True si el jugador debe saltar, False en caso contrario
     """
-    global mlp, modelo_entrenado, scaler, jugador, bala, velocidad_bala
+    global mlp, modelo_entrenado, scaler, jugador, bala, bala2, velocidad_bala, movimiento_izquierda, movimiento_derecha
     
     if not modelo_entrenado:
         # Si el modelo no está entrenado aún, retornamos False (no saltar)
         return False
     
-    # Datos actuales: velocidad de la bala y distancia al jugador
-    distancia = abs(jugador.x - bala.x)
-    datos_actuales = [[abs(velocidad_bala), distancia]]
+    # Datos actuales: velocidad de la bala y distancia_x al jugador
+    distancia_x = abs(jugador.x - bala.x)
+    distancia_y = abs(jugador.y - bala2.y)
+    # velocidad_bala, distancia_x, distancia_y, izquierda, derecha, salto_hecho
+    datos_actuales = [[abs(velocidad_bala), distancia_x, distancia_y, movimiento_izquierda, movimiento_derecha]]
     
     # Normalizamos los datos con el mismo scaler usado en el entrenamiento
     datos_normalizados = scaler.transform(datos_actuales)
     
     # Hacemos la predicción
     prediccion = mlp.predict(datos_normalizados)
+    
+    # Retornamos True si la predicción es 1 (saltar), False si es 0 (no saltar)
+    return prediccion[0] == 1
+
+
+
+def entrenar_red_neuronal_izquierda():
+    global modelo_entrenado, mlp2, scaler
+    
+    # Entrenamos la red neuronal
+    X_train, X_test, y_train, y_test = split_data_izquierda()
+    
+    # Normalizamos los datos
+    X_train = scaler.fit_transform(X_train)
+    X_test = scaler.transform(X_test)
+    
+    mlp2.fit(X_train, y_train)
+    y_pred = mlp2.predict(X_test)  # Changed from mlp to mlp2
+
+    accuracy = accuracy_score(y_test, y_pred)
+    print(f'\nPrecisión de la Red Neuronal en test: {accuracy:.4f}')
+    
+    modelo_entrenado = True
+    return mlp2
+
+def hacer_prediccion_izquierda_red_neuronal():
+    global mlp2, modelo_entrenado, scaler, jugador, bala, bala2, velocidad_bala, movimiento_izquierda, movimiento_derecha, salto
+    
+    if not modelo_entrenado:
+        # Si el modelo no está entrenado aún, retornamos False (no saltar)
+        return False
+    
+    # Datos actuales: velocidad de la bala y distancia_x al jugador
+    distancia_x = abs(jugador.x - bala.x)
+    distancia_y = abs(jugador.y - bala2.y)
+    # velocidad_bala, distancia_x, distancia_y, izquierda, derecha, salto_hecho
+    datos_actuales = [[abs(velocidad_bala), distancia_x, distancia_y, movimiento_derecha, salto]]
+    
+    # Normalizamos los datos con el mismo scaler usado en el entrenamiento
+    datos_normalizados = scaler.transform(datos_actuales)
+    
+    # Hacemos la predicción
+    prediccion = mlp2.predict(datos_normalizados)
     
     # Retornamos True si la predicción es 1 (saltar), False si es 0 (no saltar)
     return prediccion[0] == 1
@@ -210,7 +266,7 @@ def entrenar_decision_tree():
     global modelo_entrenado, clf
     
     # Entrenamos el árbol de decisión
-    X_train, X_test, y_train, y_test = split_data()
+    X_train, X_test, y_train, y_test = split_data_x()
     
     clf.fit(X_train, y_train)
     y_pred = clf.predict(X_test)
@@ -234,9 +290,9 @@ def hacer_prediccion_decision_tree():
         # Si el modelo no está entrenado aún, retornamos False (no saltar)
         return False
     
-    # Datos actuales: velocidad de la bala y distancia al jugador
-    distancia = abs(jugador.x - bala.x)
-    datos_actuales = [[abs(velocidad_bala), distancia]]
+    # Datos actuales: velocidad de la bala y distancia_x al jugador
+    distancia_x = abs(jugador.x - bala.x)
+    datos_actuales = [[abs(velocidad_bala), distancia_x]]
     
     # Hacemos la predicción
     prediccion = clf.predict(datos_actuales)
@@ -247,7 +303,7 @@ def hacer_prediccion_decision_tree():
 def entrenar_logistic_regression():
     global modelo_entrenado, log_reg
     
-    X_train, X_test, y_train, y_test = split_data()
+    X_train, X_test, y_train, y_test = split_data_x()
     
     log_reg.fit(X_train, y_train)
     y_pred = log_reg.predict(X_test)
@@ -264,9 +320,9 @@ def hacer_prediccion_logistic_regression():
     if not modelo_entrenado:
         # Si el modelo no está entrenado aún, retornamos False (no saltar)
         return False
-    # Datos actuales: velocidad de la bala y distancia al jugador
-    distancia = abs(jugador.x - bala.x)
-    datos_actuales = [[abs(velocidad_bala), distancia]]
+    # Datos actuales: velocidad de la bala y distancia_x al jugador
+    distancia_x = abs(jugador.x - bala.x)
+    datos_actuales = [[abs(velocidad_bala), distancia_x]]
     # Hacemos la predicción
     prediccion = log_reg.predict(datos_actuales)
     # Retornamos True si la predicción es 1 (saltar), False si es 0 (no saltar)
@@ -287,11 +343,24 @@ def hacer_prediccion():
         return hacer_prediccion_logistic_regression()
     else:
         return False
+def hacer_prediccion_izquierda():
+    """
+    Función que decide qué modelo usar para hacer la predicción.
+    
+    Returns:
+        bool: True si el jugador debe moverse a la izquierda, False en caso contrario
+    """
+    if usar_red_neuronal:
+        return hacer_prediccion_izquierda_red_neuronal()
+    # Add other prediction methods if needed
+    else:
+        return False
 
 # Función para disparar la bala
 def disparar_bala():
     global bala_disparada, velocidad_bala
     if not bala_disparada:
+        velocidad_bala = random.randint(-10, -5)  # Velocidad aleatoria de la bala
         bala_disparada = True
         
 def disparar_bala2():
@@ -394,10 +463,15 @@ def update():
 def guardar_datos():
     global jugador, bala, velocidad_bala, salto
     
-    distancia = abs(jugador.x - bala.x)
+    distancia_x = abs(jugador.x - bala.x)
+    distancia_y = abs(jugador.y - bala2.y)
+    
     salto_hecho = 1 if salto else 0  # 1 si saltó, 0 si no saltó
-    # Guardar velocidad de la bala, distancia al jugador y si saltó o no
-    datos_modelo.append((velocidad_bala, distancia, salto_hecho))
+    izquierda = 1 if movimiento_izquierda else 0  # 1 si se mueve a la izquierda, 0 si no
+    derecha = 1 if movimiento_derecha else 0  # 1 si se mueve a la derecha, 0 si no
+    
+    # Guardar velocidad de la bala, distancia_x al jugador y si saltó o no
+    datos_modelo.append((velocidad_bala, distancia_x, distancia_y, izquierda, derecha, salto_hecho))
 
 # Función para pausar el juego y guardar los datos
 def pausa_juego():
@@ -444,6 +518,8 @@ def mostrar_menu():
                         # Forzar el reentrenamiento al cambiar de modelo
                         modelo_entrenado = False
                         entrenar_red_neuronal()
+                        entrenar_red_neuronal_izquierda()
+                        
                     elif len(datos_modelo) == 0:
                         print("No hay datos para entrenar el modelo. Juega en modo manual primero.")
                         modo_auto = False  # Volver a modo manual si no hay datos
@@ -546,6 +622,9 @@ def main():
                 
             # Modo automático: el modelo predice cuándo saltar
             elif modo_auto:
+                if hacer_prediccion_izquierda():
+                    movimiento_izquierda = True
+                    
                 if en_suelo:
                     # Usar la función unificada de predicción
                     if hacer_prediccion():
