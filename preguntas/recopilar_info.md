@@ -54,5 +54,5 @@ Toma de decisiones en el contexto de muerte digna – Academia.edu
 Para la seccion de preguntas sobre el tema 1, le pase los documentos a AnythingLLM para que genera los embeding y a su vez hiciera fine tuning con el modelo de LLAMA 3.2 con 3b de parametros.
 
 [Preguntas sobre el tema del aborto](Tema1.md)  
-[Preguntas sobre el tema de la eutanasia](Tema2.md)
+[Preguntas sobre el tema de la eutanasia](Tema2.md)  
 [Link para el video](https://drive.google.com/file/d/1nlMIivi6Kb30-DKKOJRdTtw95_MJ1Y1u/view?usp=sharing)
